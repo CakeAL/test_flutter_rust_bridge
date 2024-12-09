@@ -1,5 +1,5 @@
 import 'package:english_words/english_words.dart';
-import 'package:flutter/material.dart';
+import 'package:fluent_ui/fluent_ui.dart';
 import 'package:provider/provider.dart';
 
 void main() {
@@ -13,12 +13,9 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
       create: (context) => MyAppState(),
-      child: MaterialApp(
+      child: FluentApp(
         title: 'text_flutter',
-        theme: ThemeData(
-          useMaterial3: true,
-          colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
-        ),
+        theme: FluentThemeData(),
         home: MyHomePage(),
       ),
     );
@@ -52,7 +49,8 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   var selectedIndex = 0;
-
+  var displayMode = PaneDisplayMode.open;
+  final selected = List.empty();
   @override
   Widget build(BuildContext context) {
     Widget page;
@@ -66,36 +64,32 @@ class _MyHomePageState extends State<MyHomePage> {
     }
 
     return LayoutBuilder(builder: (context, constraints) {
-      return Scaffold(
-        body: Row(
-          children: [
-            SafeArea(
-              child: NavigationRail(
-                extended: constraints.maxWidth >= 600,
-                destinations: [
-                  NavigationRailDestination(
-                    icon: Icon(Icons.home),
-                    label: Text('Home'),
-                  ),
-                  NavigationRailDestination(
-                    icon: Icon(Icons.favorite),
-                    label: Text('Favorites'),
-                  ),
-                ],
-                selectedIndex: selectedIndex,
-                onDestinationSelected: (value) {
-                  setState(() {
-                    selectedIndex = value;
-                  });
-                },
-              ),
-            ),
-            Expanded(
-              child: Container(
-                color: Theme.of(context).colorScheme.primaryContainer,
-                child: page,
-              ),
-            ),
+      return NavigationView(
+        appBar: NavigationAppBar(
+            title: Text("Words"),
+            automaticallyImplyLeading: false,
+        ),
+        pane: NavigationPane(
+          selected: selectedIndex,
+          onItemPressed: (index) => {
+            if (index == selectedIndex)
+              {
+                if (displayMode == PaneDisplayMode.open)
+                  {setState(() => displayMode = PaneDisplayMode.compact)}
+                else if (displayMode == PaneDisplayMode.compact)
+                  {setState(() => displayMode == PaneDisplayMode.open)}
+              }
+          },
+          onChanged: (value) => setState(() => selectedIndex = value),
+          items: [
+            PaneItem(
+                icon: const Icon(FluentIcons.home),
+                title: Text("Home"),
+                body: page),
+            PaneItem(
+                icon: const Icon(FluentIcons.heart),
+                title: Text("Like"),
+                body: page)
           ],
         ),
       );
@@ -108,40 +102,52 @@ class GeneratorPage extends StatelessWidget {
   Widget build(BuildContext context) {
     var appState = context.watch<MyAppState>();
     var pair = appState.current;
+    final style = ButtonStyle(
+        textStyle: WidgetStatePropertyAll(
+      FluentTheme.of(context).typography.subtitle,
+    ));
 
     IconData icon;
     if (appState.favorites.contains(pair)) {
-      icon = Icons.favorite;
+      icon = FluentIcons.heart_fill;
     } else {
-      icon = Icons.favorite_border;
+      icon = FluentIcons.heart;
     }
 
     return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            BigCard(pair: pair),
-            SizedBox(height: 10),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                ElevatedButton.icon(
-                    onPressed: () {
-                      appState.toggleFavorite();
-                    },
-                    icon: Icon(icon),
-                    label: Text("Like")),
-                SizedBox(width: 10),
-                ElevatedButton(
-                    onPressed: () {
-                      appState.getNext();
-                    },
-                    child: Text("Next")),
-              ],
-            ),
-          ],
-        ),
-      );
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          BigCard(pair: pair),
+          SizedBox(height: 10),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              FilledButton(
+                onPressed: () {
+                  appState.toggleFavorite();
+                },
+                style: style,
+                child: Row(children: [
+                  Icon(icon, size: 20.0),
+                  SizedBox(width: 10),
+                  Text("Like")
+                ]),
+              ),
+              // label: Text("Like")),
+              SizedBox(width: 10),
+              FilledButton(
+                onPressed: () {
+                  appState.getNext();
+                },
+                style: style,
+                child: Text("Next"),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -156,20 +162,24 @@ class FavoritesPage extends StatelessWidget {
       );
     }
 
-    return ListView(
-      children: [
-        Padding(
-          padding: const EdgeInsets.all(20),
-          child: Text('You have'
-              '${appState.favorites.length} favorites:'),
+    return ScaffoldPage.withPadding(
+        header: const PageHeader(
+          title: Text("Favorites"),
         ),
-        for (var pair in appState.favorites)
-          ListTile(
-            leading: Icon(Icons.favorite),
-            title: Text(pair.asLowerCase),
-          )
-      ],
-    );
+        content: ListView(
+          children: [
+            Text(
+              'You have '
+              '${appState.favorites.length} favorites:',
+              style: FluentTheme.of(context).typography.bodyLarge,
+            ),
+            for (var pair in appState.favorites)
+              ListTile(
+                leading: Icon(FluentIcons.heart),
+                title: Text(pair.asLowerCase),
+              )
+          ],
+        ));
   }
 }
 
@@ -183,16 +193,16 @@ class BigCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final style = theme.textTheme.displayMedium!
-        .copyWith(color: theme.colorScheme.onPrimary);
     return Card(
-      color: theme.colorScheme.primary,
+      backgroundColor: Colors.teal.lightest,
       child: Padding(
-        padding: const EdgeInsets.all(20.0),
+        padding: const EdgeInsets.all(40.0),
         child: Text(
           pair.asLowerCase,
-          style: style,
+          style: FluentTheme.of(context)
+              .typography
+              .display
+              ?.copyWith(color: Colors.green.darker),
           semanticsLabel: "${pair.first} ${pair.second}",
         ),
       ),
