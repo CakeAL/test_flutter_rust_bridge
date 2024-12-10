@@ -1,8 +1,10 @@
-import 'package:english_words/english_words.dart';
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:test_flutter/src/rust/api/simple.dart';
+import 'package:test_flutter/src/rust/frb_generated.dart';
 import 'package:provider/provider.dart';
 
-void main() {
+Future<void> main() async {
+  await RustLib.init();
   runApp(MyApp());
 }
 
@@ -12,32 +14,28 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
-      create: (context) => MyAppState(),
-      child: FluentApp(
-        title: 'text_flutter',
-        theme: FluentThemeData(),
-        home: MyHomePage(),
-      ),
-    );
+        create: (context) => MyAppState(),
+        child: FluentApp(
+          title: 'text_flutter',
+          theme: FluentThemeData(),
+          home: MyHomePage(),
+        ));
   }
 }
 
 class MyAppState extends ChangeNotifier {
-  var current = WordPair.random();
+  var currentNum = getNum();
 
-  void getNext() {
-    current = WordPair.random();
+  void addOneDart() {
+    addOne();
+    currentNum = getNum();
     notifyListeners();
   }
 
-  var favorites = <WordPair>[];
+  var liked = getAllLiked();
 
-  void toggleFavorite() {
-    if (favorites.contains(current)) {
-      favorites.remove(current);
-    } else {
-      favorites.add(current);
-    }
+  void toggleLiked() {
+    addLike();
     notifyListeners();
   }
 }
@@ -66,8 +64,8 @@ class _MyHomePageState extends State<MyHomePage> {
     return LayoutBuilder(builder: (context, constraints) {
       return NavigationView(
         appBar: NavigationAppBar(
-            title: Text("Words"),
-            automaticallyImplyLeading: false,
+          title: Text("Count"),
+          automaticallyImplyLeading: false,
         ),
         pane: NavigationPane(
           selected: selectedIndex,
@@ -101,14 +99,14 @@ class GeneratorPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     var appState = context.watch<MyAppState>();
-    var pair = appState.current;
+    var currentNum = appState.currentNum;
     final style = ButtonStyle(
         textStyle: WidgetStatePropertyAll(
       FluentTheme.of(context).typography.subtitle,
     ));
 
     IconData icon;
-    if (appState.favorites.contains(pair)) {
+    if (whetherLike(num: currentNum)) {
       icon = FluentIcons.heart_fill;
     } else {
       icon = FluentIcons.heart;
@@ -118,14 +116,14 @@ class GeneratorPage extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          BigCard(pair: pair),
+          BigCard(num: currentNum),
           SizedBox(height: 10),
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               FilledButton(
                 onPressed: () {
-                  appState.toggleFavorite();
+                  appState.toggleLiked();
                 },
                 style: style,
                 child: Row(children: [
@@ -138,10 +136,10 @@ class GeneratorPage extends StatelessWidget {
               SizedBox(width: 10),
               FilledButton(
                 onPressed: () {
-                  appState.getNext();
+                  appState.addOneDart();
                 },
                 style: style,
-                child: Text("Next"),
+                child: Text("+ 1"),
               ),
             ],
           ),
@@ -151,12 +149,19 @@ class GeneratorPage extends StatelessWidget {
   }
 }
 
-class FavoritesPage extends StatelessWidget {
+class FavoritesPage extends StatefulWidget {
+  @override
+  State<FavoritesPage> createState() => _FavoritesPageState();
+}
+
+class _FavoritesPageState extends State<FavoritesPage> {
+  int sumALL = 0;
+
   @override
   Widget build(BuildContext context) {
-    var appState = context.watch<MyAppState>();
+    var allLiked = getAllLiked();
 
-    if (appState.favorites.isEmpty) {
+    if (allLiked.isEmpty) {
       return Center(
         child: Text("No Favorites yet"),
       );
@@ -170,13 +175,36 @@ class FavoritesPage extends StatelessWidget {
           children: [
             Text(
               'You have '
-              '${appState.favorites.length} favorites:',
+              '${allLiked.length} favorites:',
               style: FluentTheme.of(context).typography.bodyLarge,
             ),
-            for (var pair in appState.favorites)
+            for (var num in allLiked)
               ListTile(
                 leading: Icon(FluentIcons.heart),
-                title: Text(pair.asLowerCase),
+                title: Text("$num"),
+              ),
+            FilledButton(
+              onPressed: () async {
+                var s = 0;
+                await sumAll(dartCallback: (sum) => s = sum);
+                setState(() {
+                  sumALL = s;
+                });
+                print(sumALL);
+              },
+              style: ButtonStyle(
+                textStyle: WidgetStatePropertyAll(
+                    FluentTheme.of(context).typography.bodyLarge),
+              ),
+              child: Text("Click to sum them. (may take a while time.)"),
+            ),
+            SizedBox(
+              height: 10,
+            ),
+            if (sumALL != 0)
+              Text(
+                "sumAll is $sumALL",
+                style: FluentTheme.of(context).typography.bodyLarge,
               )
           ],
         ));
@@ -186,10 +214,10 @@ class FavoritesPage extends StatelessWidget {
 class BigCard extends StatelessWidget {
   const BigCard({
     super.key,
-    required this.pair,
+    required this.num,
   });
 
-  final WordPair pair;
+  final int num;
 
   @override
   Widget build(BuildContext context) {
@@ -198,12 +226,11 @@ class BigCard extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.all(40.0),
         child: Text(
-          pair.asLowerCase,
+          "$num",
           style: FluentTheme.of(context)
               .typography
               .display
               ?.copyWith(color: Colors.green.darker),
-          semanticsLabel: "${pair.first} ${pair.second}",
         ),
       ),
     );
