@@ -156,6 +156,13 @@ class FavoritesPage extends StatefulWidget {
 
 class _FavoritesPageState extends State<FavoritesPage> {
   int sumALL = 0;
+  late Stream<int> ticks;
+
+  @override
+  void initState() {
+    super.initState();
+    ticks = tick();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -201,11 +208,17 @@ class _FavoritesPageState extends State<FavoritesPage> {
             SizedBox(
               height: 10,
             ),
+            StreamBuilder<int>(
+                stream: ticks,
+                builder: (context, snap) {
+                  final data = snap.data;
+                  return Text("$data");
+                }),
             if (sumALL != 0)
               Text(
                 "sumAll is $sumALL",
                 style: FluentTheme.of(context).typography.bodyLarge,
-              )
+              ),
           ],
         ));
   }

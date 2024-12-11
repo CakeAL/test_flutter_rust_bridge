@@ -21,3 +21,5 @@ Int32List getAllLiked() => RustLib.instance.api.crateApiSimpleGetAllLiked();
 
 Future<void> sumAll({required FutureOr<int> Function(int) dartCallback}) =>
     RustLib.instance.api.crateApiSimpleSumAll(dartCallback: dartCallback);
+
+Stream<int> tick() => RustLib.instance.api.crateApiSimpleTick();
